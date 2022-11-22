@@ -1,6 +1,8 @@
-cabal-version:      3.6
+cabal-version:      2.4
 name:               perun-cardano-wallet
 version:            0.1.0.0
+
+Tested-With: GHC == 8.10.7
 
 -- A short (one-line) description of the package.
 -- synopsis:
@@ -10,9 +12,9 @@ version:            0.1.0.0
 
 -- A URL where users can report bugs.
 -- bug-reports:
-license:            NONE
 author:             Jan Bormet
-maintainer:         jan.bormet@bormet.info
+                    Norbert Dzikowski
+maintainer:         feedback@perun.network
 
 -- A copyright notice.
 -- copyright:
