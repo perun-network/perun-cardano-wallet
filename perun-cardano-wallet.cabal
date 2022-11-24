@@ -48,6 +48,8 @@ executable perun-cardano-wallet
                   , serialise
                   , wai
                   , warp
+                  , servant
+                  , containers
 
 test-suite perun-cardano-wallet-test
   import:           shared
@@ -57,4 +59,4 @@ test-suite perun-cardano-wallet-test
   ghc-options:        -threaded
                       -rtsopts
                       -with-rtsopts=-N
-                      -fno-warn-type-defaults
+                      -fno-warn-type-defaultsg

@@ -11,15 +11,14 @@ import Perun (ChannelState)
 import Plutus.Contract.Oracle (SignedMessage, signMessage')
 
 data Wallet = Wallet
-  { id :: !Integer,
-    privateKey :: !Crypto.XPrv
+  { privateKey :: !Crypto.XPrv
   }
 
 signState :: ChannelState -> Wallet -> SignedMessage ChannelState
-signState state (Wallet _ key) = signMessage' state key
+signState state (Wallet key) = signMessage' state key
 
 getPaymentPubKey :: Wallet -> PaymentPubKey
-getPaymentPubKey (Wallet _ key) = PaymentPubKey $ toPublicKey key
+getPaymentPubKey (Wallet key) = PaymentPubKey $ toPublicKey key
 
 unsafeGenerateFromInteger :: Integer -> Crypto.XPrv
 unsafeGenerateFromInteger seed =
@@ -28,5 +27,5 @@ unsafeGenerateFromInteger seed =
       seedStringPadded = seedString <> BS.replicate missing 0
    in Crypto.generateFromSeed' seedStringPadded
 
-unsafeGenerateWalletFromInteger :: Integer -> Integer -> Wallet
-unsafeGenerateWalletFromInteger wId seed = Wallet wId (unsafeGenerateFromInteger seed)
+unsafeGenerateWalletFromInteger :: Integer -> Wallet
+unsafeGenerateWalletFromInteger seed = Wallet (unsafeGenerateFromInteger seed)

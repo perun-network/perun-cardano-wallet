@@ -1,38 +1,61 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Main where
 
+import qualified Data.Map.Strict as Map
 import Ledger.Address (PaymentPubKey, PaymentPubKeyHash, paymentPubKeyHash)
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Perun.Onchain (ChannelState)
 import Plutus.Contract.Oracle (SignedMessage)
 import Servant
+  ( Handler,
+    Proxy (..),
+    Server,
+    serve,
+    type (:<|>) (..),
+    type (:>),
+  )
+import Servant.API
 import Wallet.Wallet
 
 type WalletApi =
-  "getAddress" :> Capture "id" Integer :> Get '[JSON] PaymentPubKey
-    :<|> "sign" :> Capture "id" Integer :> ReqBody '[JSON] ChannelState :> Post '[JSON] (SignedMessage ChannelState)
-    :<|> "getAddressHash" :> Capture "id" Integer :> Get '[JSON] PaymentPubKeyHash
+  "getAddress" Servant.:> ReqBody '[JSON] PaymentPubKeyHash Servant.:> Post '[JSON] PaymentPubKey
+    Servant.:<|> "sign" Servant.:> ReqBody '[JSON] PaymentPubKeyHash Servant.:> ReqBody '[JSON] ChannelState Servant.:> Post '[JSON] (SignedMessage ChannelState)
+    Servant.:<|> "exists" Servant.:> ReqBody '[JSON] PaymentPubKeyHash Servant.:> Post '[JSON] Bool
 
-walletApi :: Proxy WalletApi
-walletApi = Proxy
+walletApi :: Servant.Proxy WalletApi
+walletApi = Servant.Proxy
 
-server :: Server WalletApi
+server :: Servant.Server WalletApi
 server =
   getAddressHandler
-    :<|> signHandler
-    :<|> getAddressHashHandler
+    Servant.:<|> signHandler
+    Servant.:<|> existsHandler
   where
-    getAddressHandler :: Integer -> Handler PaymentPubKey
-    getAddressHandler wId = return $ getPaymentPubKey (wallets !! fromIntegral wId)
+    getAddressHandler :: PaymentPubKeyHash -> Servant.Handler PaymentPubKey
+    getAddressHandler hash = do
+      return $
+        ( \case
+            Nothing -> error "No wallet found for given PaymentPubKeyHash"
+            Just w -> getPaymentPubKey w
+        )
+          (Map.lookup hash walletMap)
 
-    signHandler :: Integer -> ChannelState -> Handler (SignedMessage ChannelState)
-    signHandler wId state = return $ signState state (wallets !! fromIntegral wId)
+    signHandler :: PaymentPubKeyHash -> ChannelState -> Servant.Handler (SignedMessage ChannelState)
+    signHandler hash state = do
+      let wallet =
+            ( \case
+                Nothing -> error "No wallet found for given PaymentPubKeyHash"
+                Just w -> w
+            )
+              (Map.lookup hash walletMap)
+      return $ signState state wallet
 
-    getAddressHashHandler :: Integer -> Handler PaymentPubKeyHash
-    getAddressHashHandler wId = return . paymentPubKeyHash $ getPaymentPubKey (wallets !! fromIntegral wId)
+    existsHandler :: PaymentPubKeyHash -> Servant.Handler Bool
+    existsHandler hash = return $ Map.member hash walletMap
 
 main :: IO ()
 main = do
@@ -40,12 +63,15 @@ main = do
       settings =
         setPort port $
           setBeforeMainLoop
-            (putStrLn ("perun-cardano-wallet: listening in port " ++ show port))
+            (putStrLn ("perun-cardano-wallet: listening in port " ++ show port ++ " ..."))
             defaultSettings
   runSettings settings =<< mkApp
 
 mkApp :: IO Application
-mkApp = return $ serve walletApi server
+mkApp = return $ Servant.serve walletApi server
 
 wallets :: [Wallet]
-wallets = zipWith unsafeGenerateWalletFromInteger [0 .. 5] [0 .. 5]
+wallets = unsafeGenerateWalletFromInteger <$> [0 .. 5]
+
+walletMap :: Map.Map PaymentPubKeyHash Wallet
+walletMap = Map.fromList $ map (\x -> (paymentPubKeyHash $ getPaymentPubKey x, x)) wallets
