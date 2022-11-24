@@ -4,6 +4,8 @@
 
 module Main where
 
+import Control.Monad.Except
+import Data.ByteString.Lazy.UTF8 as BLU
 import qualified Data.Map.Strict as Map
 import Ledger.Address (PaymentPubKey, PaymentPubKeyHash, paymentPubKeyHash)
 import Network.Wai
@@ -14,7 +16,10 @@ import Servant
   ( Handler,
     Proxy (..),
     Server,
+    ServerError (..),
+    err404,
     serve,
+    throwError,
     type (:<|>) (..),
     type (:>),
   )
@@ -37,21 +42,16 @@ server =
   where
     getAddressHandler :: PaymentPubKeyHash -> Servant.Handler PaymentPubKey
     getAddressHandler hash = do
-      return $
-        ( \case
-            Nothing -> error "No wallet found for given PaymentPubKeyHash"
-            Just w -> getPaymentPubKey w
-        )
-          (Map.lookup hash walletMap)
+      wallet <- case Map.lookup hash walletMap of
+        Nothing -> throwError walletNotFoundError
+        Just w -> return w
+      return $ getPaymentPubKey wallet
 
     signHandler :: PaymentPubKeyHash -> ChannelState -> Servant.Handler (SignedMessage ChannelState)
     signHandler hash state = do
-      let wallet =
-            ( \case
-                Nothing -> error "No wallet found for given PaymentPubKeyHash"
-                Just w -> w
-            )
-              (Map.lookup hash walletMap)
+      wallet <- case Map.lookup hash walletMap of
+        Nothing -> throwError walletNotFoundError
+        Just w -> return w
       return $ signState state wallet
 
     existsHandler :: PaymentPubKeyHash -> Servant.Handler Bool
@@ -75,3 +75,6 @@ wallets = unsafeGenerateWalletFromInteger <$> [0 .. 5]
 
 walletMap :: Map.Map PaymentPubKeyHash Wallet
 walletMap = Map.fromList $ map (\x -> (paymentPubKeyHash $ getPaymentPubKey x, x)) wallets
+
+walletNotFoundError :: ServerError
+walletNotFoundError = err404 {errBody = BLU.fromString "No Wallet found for given PaymentPubKeyHash"}
