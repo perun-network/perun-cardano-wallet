@@ -52,6 +52,7 @@ executable perun-cardano-wallet
                   , containers
                   , mtl
                   , utf8-string
+                  , plutus-ledger-api
 
 test-suite perun-cardano-wallet-test
   import:           shared

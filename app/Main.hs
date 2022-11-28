@@ -1,17 +1,16 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Main where
 
 import Control.Monad.Except
-import Data.ByteString.Lazy.UTF8 as BLU
 import qualified Data.Map.Strict as Map
-import Ledger.Address (PaymentPubKey, PaymentPubKeyHash, paymentPubKeyHash)
+import Ledger.Address (PaymentPubKey)
 import Network.Wai
 import Network.Wai.Handler.Warp
-import Perun.Onchain (ChannelState)
 import Plutus.Contract.Oracle (SignedMessage)
+import Plutus.V2.Ledger.Api (BuiltinByteString)
 import Servant
   ( Handler,
     Proxy (..),
@@ -19,7 +18,6 @@ import Servant
     ServerError (..),
     err404,
     serve,
-    throwError,
     type (:<|>) (..),
     type (:>),
   )
@@ -27,35 +25,31 @@ import Servant.API
 import Wallet.Wallet
 
 type WalletApi =
-  "getAddress" Servant.:> ReqBody '[JSON] PaymentPubKeyHash Servant.:> Post '[JSON] PaymentPubKey
-    Servant.:<|> "sign" Servant.:> ReqBody '[JSON] PaymentPubKeyHash Servant.:> ReqBody '[JSON] ChannelState Servant.:> Post '[JSON] (SignedMessage ChannelState)
-    Servant.:<|> "exists" Servant.:> ReqBody '[JSON] PaymentPubKeyHash Servant.:> Post '[JSON] Bool
+  "sign" Servant.:> ReqBody '[JSON] PaymentPubKey Servant.:> ReqBody '[OctetStream] BuiltinByteString Servant.:> Post '[OctetStream] (SignedMessage BuiltinByteString)
+    Servant.:<|> "exists" Servant.:> ReqBody '[JSON] PaymentPubKey Servant.:> Post '[JSON] Bool
+    Servant.:<|> "verfiy" Servant.:> ReqBody '[JSON] PaymentPubKey Servant.:> ReqBody '[JSON] (SignedMessage BuiltinByteString) Servant.:> Post '[JSON] Bool
 
 walletApi :: Servant.Proxy WalletApi
 walletApi = Servant.Proxy
 
 server :: Servant.Server WalletApi
 server =
-  getAddressHandler
-    Servant.:<|> signHandler
+  signHandler
     Servant.:<|> existsHandler
+    Servant.:<|> verifyHandler
   where
-    getAddressHandler :: PaymentPubKeyHash -> Servant.Handler PaymentPubKey
-    getAddressHandler hash = do
+    signHandler :: PaymentPubKey -> BuiltinByteString -> Servant.Handler (SignedMessage BuiltinByteString)
+    signHandler hash msg = do
       wallet <- case Map.lookup hash walletMap of
         Nothing -> throwError walletNotFoundError
         Just w -> return w
-      return $ getPaymentPubKey wallet
+      return $ signData msg wallet
 
-    signHandler :: PaymentPubKeyHash -> ChannelState -> Servant.Handler (SignedMessage ChannelState)
-    signHandler hash state = do
-      wallet <- case Map.lookup hash walletMap of
-        Nothing -> throwError walletNotFoundError
-        Just w -> return w
-      return $ signState state wallet
-
-    existsHandler :: PaymentPubKeyHash -> Servant.Handler Bool
+    existsHandler :: PaymentPubKey -> Servant.Handler Bool
     existsHandler hash = return $ Map.member hash walletMap
+
+    verifyHandler :: PaymentPubKey -> SignedMessage BuiltinByteString -> Handler Bool
+    verifyHandler hash = undefined
 
 main :: IO ()
 main = do
@@ -73,8 +67,8 @@ mkApp = return $ Servant.serve walletApi server
 wallets :: [Wallet]
 wallets = unsafeGenerateWalletFromInteger <$> [0 .. 5]
 
-walletMap :: Map.Map PaymentPubKeyHash Wallet
-walletMap = Map.fromList $ map (\x -> (paymentPubKeyHash $ getPaymentPubKey x, x)) wallets
+walletMap :: Map.Map PaymentPubKey Wallet
+walletMap = Map.fromList $ map (\x -> (getPaymentPubKey x, x)) wallets
 
 walletNotFoundError :: ServerError
-walletNotFoundError = err404 {errBody = BLU.fromString "No Wallet found for given PaymentPubKeyHash"}
+walletNotFoundError = err404 {errBody = "No Wallet found for given PaymentPubKeyHash"}

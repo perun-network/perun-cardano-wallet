@@ -7,15 +7,15 @@ import qualified Data.ByteString.Lazy as BSL
 import Ledger.Address (PaymentPubKey (PaymentPubKey))
 import Ledger.Crypto (toPublicKey)
 import qualified Ledger.Crypto as Crypto (generateFromSeed')
-import Perun (ChannelState)
 import Plutus.Contract.Oracle (SignedMessage, signMessage')
+import Plutus.V2.Ledger.Api (BuiltinByteString)
 
 data Wallet = Wallet
   { privateKey :: !Crypto.XPrv
   }
 
-signState :: ChannelState -> Wallet -> SignedMessage ChannelState
-signState state (Wallet key) = signMessage' state key
+signData :: BuiltinByteString -> Wallet -> SignedMessage BuiltinByteString
+signData msg (Wallet key) = signMessage' msg key
 
 getPaymentPubKey :: Wallet -> PaymentPubKey
 getPaymentPubKey (Wallet key) = PaymentPubKey $ toPublicKey key
