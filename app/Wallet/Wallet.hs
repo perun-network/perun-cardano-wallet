@@ -4,21 +4,23 @@ import qualified Cardano.Crypto.Wallet as Crypto
 import Codec.Serialise (serialise)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
-import Ledger.Address (PaymentPubKey (PaymentPubKey))
+import Ledger (PubKey, signedBy)
 import Ledger.Crypto (toPublicKey)
-import qualified Ledger.Crypto as Crypto (generateFromSeed')
-import Plutus.Contract.Oracle (SignedMessage, signMessage')
+import qualified Ledger.Crypto as Crypto (Signature, generateFromSeed', sign')
 import Plutus.V2.Ledger.Api (BuiltinByteString)
 
 data Wallet = Wallet
   { privateKey :: !Crypto.XPrv
   }
 
-signData :: BuiltinByteString -> Wallet -> SignedMessage BuiltinByteString
-signData msg (Wallet key) = signMessage' msg key
+signData :: BuiltinByteString -> Wallet -> Crypto.Signature
+signData msg (Wallet key) = Crypto.sign' msg key
 
-getPaymentPubKey :: Wallet -> PaymentPubKey
-getPaymentPubKey (Wallet key) = PaymentPubKey $ toPublicKey key
+verifySignature :: Crypto.Signature -> PubKey -> BuiltinByteString -> Bool
+verifySignature sig publicKey msg = signedBy sig publicKey msg
+
+getPubKey :: Wallet -> PubKey
+getPubKey (Wallet key) = toPublicKey key
 
 unsafeGenerateFromInteger :: Integer -> Crypto.XPrv
 unsafeGenerateFromInteger seed =

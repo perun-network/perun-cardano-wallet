@@ -6,11 +6,10 @@ module Main where
 
 import Control.Monad.Except
 import qualified Data.Map.Strict as Map
-import Ledger.Address (PaymentPubKey)
+import Ledger (PubKey)
+import Ledger.Crypto (Signature)
 import Network.Wai
 import Network.Wai.Handler.Warp
-import Plutus.Contract.Oracle (SignedMessage)
-import Plutus.V2.Ledger.Api (BuiltinByteString)
 import Servant
   ( Handler,
     Proxy (..),
@@ -22,12 +21,13 @@ import Servant
     type (:>),
   )
 import Servant.API
+import Types
 import Wallet.Wallet
 
 type WalletApi =
-  "sign" Servant.:> ReqBody '[JSON] PaymentPubKey Servant.:> ReqBody '[OctetStream] BuiltinByteString Servant.:> Post '[OctetStream] (SignedMessage BuiltinByteString)
-    Servant.:<|> "exists" Servant.:> ReqBody '[JSON] PaymentPubKey Servant.:> Post '[JSON] Bool
-    Servant.:<|> "verfiy" Servant.:> ReqBody '[JSON] PaymentPubKey Servant.:> ReqBody '[JSON] (SignedMessage BuiltinByteString) Servant.:> Post '[JSON] Bool
+  "sign" Servant.:> ReqBody '[JSON] SigningRequest Servant.:> Post '[JSON] Signature
+    Servant.:<|> "exists" Servant.:> ReqBody '[JSON] PubKey Servant.:> Post '[JSON] Bool
+    Servant.:<|> "verfiy" Servant.:> ReqBody '[JSON] VerificationRequest Servant.:> Post '[JSON] Bool
 
 walletApi :: Servant.Proxy WalletApi
 walletApi = Servant.Proxy
@@ -38,18 +38,18 @@ server =
     Servant.:<|> existsHandler
     Servant.:<|> verifyHandler
   where
-    signHandler :: PaymentPubKey -> BuiltinByteString -> Servant.Handler (SignedMessage BuiltinByteString)
-    signHandler hash msg = do
-      wallet <- case Map.lookup hash walletMap of
+    signHandler :: SigningRequest -> Servant.Handler Signature
+    signHandler (SigningRequest publicKey msg) = do
+      wallet <- case Map.lookup publicKey walletMap of
         Nothing -> throwError walletNotFoundError
         Just w -> return w
       return $ signData msg wallet
 
-    existsHandler :: PaymentPubKey -> Servant.Handler Bool
-    existsHandler hash = return $ Map.member hash walletMap
+    existsHandler :: PubKey -> Servant.Handler Bool
+    existsHandler key = return $ Map.member key walletMap
 
-    verifyHandler :: PaymentPubKey -> SignedMessage BuiltinByteString -> Handler Bool
-    verifyHandler hash = undefined
+    verifyHandler :: VerificationRequest -> Handler Bool
+    verifyHandler (VerificationRequest signature publicKey message) = return $ verifySignature signature publicKey message
 
 main :: IO ()
 main = do
@@ -67,8 +67,8 @@ mkApp = return $ Servant.serve walletApi server
 wallets :: [Wallet]
 wallets = unsafeGenerateWalletFromInteger <$> [0 .. 5]
 
-walletMap :: Map.Map PaymentPubKey Wallet
-walletMap = Map.fromList $ map (\x -> (getPaymentPubKey x, x)) wallets
+walletMap :: Map.Map PubKey Wallet
+walletMap = Map.fromList $ map (\x -> (getPubKey x, x)) wallets
 
 walletNotFoundError :: ServerError
-walletNotFoundError = err404 {errBody = "No Wallet found for given PaymentPubKeyHash"}
+walletNotFoundError = err404 {errBody = "No Wallet found for given PubKey"}

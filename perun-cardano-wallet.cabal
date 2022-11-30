@@ -39,6 +39,7 @@ executable perun-cardano-wallet
   main-is:          Main.hs
   hs-source-dirs:   app
   other-modules:    Wallet.Wallet
+                  , Types
   build-depends:    servant-server
                   , cardano-crypto
                   , perun-plutus
@@ -53,6 +54,8 @@ executable perun-cardano-wallet
                   , mtl
                   , utf8-string
                   , plutus-ledger-api
+                  -- for testing:
+                  , aeson   
 
 test-suite perun-cardano-wallet-test
   import:           shared
