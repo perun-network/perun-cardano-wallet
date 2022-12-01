@@ -17,7 +17,7 @@ signData :: BuiltinByteString -> Wallet -> Crypto.Signature
 signData msg (Wallet key) = Crypto.sign' msg key
 
 verifySignature :: Crypto.Signature -> PubKey -> BuiltinByteString -> Bool
-verifySignature sig publicKey msg = signedBy sig publicKey msg
+verifySignature = signedBy
 
 getPubKey :: Wallet -> PubKey
 getPubKey (Wallet key) = toPublicKey key
