@@ -26,7 +26,7 @@ import Wallet.Wallet
 
 type WalletApi =
   "sign" Servant.:> ReqBody '[JSON] SigningRequest Servant.:> Post '[JSON] Signature
-    Servant.:<|> "exists" Servant.:> ReqBody '[JSON] PubKey Servant.:> Post '[JSON] Bool
+    Servant.:<|> "keyAvailable" Servant.:> ReqBody '[JSON] KeyAvailabilityRequest Servant.:> Post '[JSON] Bool
     Servant.:<|> "verfiy" Servant.:> ReqBody '[JSON] VerificationRequest Servant.:> Post '[JSON] Bool
 
 walletApi :: Servant.Proxy WalletApi
@@ -35,7 +35,7 @@ walletApi = Servant.Proxy
 server :: Servant.Server WalletApi
 server =
   signHandler
-    Servant.:<|> existsHandler
+    Servant.:<|> keyAvailableHandler
     Servant.:<|> verifyHandler
   where
     signHandler :: SigningRequest -> Servant.Handler Signature
@@ -45,8 +45,8 @@ server =
         Just w -> return w
       return $ signData msg wallet
 
-    existsHandler :: PubKey -> Servant.Handler Bool
-    existsHandler key = return $ Map.member key walletMap
+    keyAvailableHandler :: KeyAvailabilityRequest -> Servant.Handler Bool
+    keyAvailableHandler key = return $ Map.member key walletMap
 
     verifyHandler :: VerificationRequest -> Handler Bool
     verifyHandler (VerificationRequest signature publicKey message) = return $ verifySignature signature publicKey message

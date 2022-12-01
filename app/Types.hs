@@ -20,5 +20,7 @@ data VerificationRequest = VerificationRequest
     vMessage :: !BuiltinByteString
   }
 
+type KeyAvailabilityRequest = PubKey
+
 $(deriveJSON defaultOptions ''SigningRequest)
 $(deriveJSON defaultOptions ''VerificationRequest)
