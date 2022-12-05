@@ -27,7 +27,7 @@ import Wallet.Wallet
 type WalletApi =
   "sign" Servant.:> ReqBody '[JSON] SigningRequest Servant.:> Post '[JSON] Signature
     Servant.:<|> "keyAvailable" Servant.:> ReqBody '[JSON] KeyAvailabilityRequest Servant.:> Post '[JSON] Bool
-    Servant.:<|> "verfiy" Servant.:> ReqBody '[JSON] VerificationRequest Servant.:> Post '[JSON] Bool
+    Servant.:<|> "verify" Servant.:> ReqBody '[JSON] VerificationRequest Servant.:> Post '[JSON] Bool
 
 walletApi :: Servant.Proxy WalletApi
 walletApi = Servant.Proxy
