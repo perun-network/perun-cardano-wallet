@@ -28,6 +28,8 @@ type WalletApi =
   "sign" Servant.:> ReqBody '[JSON] SigningRequest Servant.:> Post '[JSON] Signature
     Servant.:<|> "keyAvailable" Servant.:> ReqBody '[JSON] KeyAvailabilityRequest Servant.:> Post '[JSON] Bool
     Servant.:<|> "verify" Servant.:> ReqBody '[JSON] VerificationRequest Servant.:> Post '[JSON] Bool
+    Servant.:<|> "signChannelState" Servant.:> ReqBody '[JSON] ChannelStateSigningRequest Servant.:> Post '[JSON] Signature
+    Servant.:<|> "verifyChannelState" Servant.:> ReqBody '[JSON] ChannelStateVerificationRequest Servant.:> Post '[JSON] Bool
 
 walletApi :: Servant.Proxy WalletApi
 walletApi = Servant.Proxy
@@ -37,6 +39,8 @@ server =
   signHandler
     Servant.:<|> keyAvailableHandler
     Servant.:<|> verifyHandler
+    Servant.:<|> signChannelStateHandler
+    Servant.:<|> verifyChannelState
   where
     signHandler :: SigningRequest -> Servant.Handler Signature
     signHandler (SigningRequest publicKey msg) = do
@@ -50,6 +54,16 @@ server =
 
     verifyHandler :: VerificationRequest -> Handler Bool
     verifyHandler (VerificationRequest signature publicKey message) = return $ verifySignature signature publicKey message
+
+    signChannelStateHandler :: ChannelStateSigningRequest -> Servant.Handler Signature
+    signChannelStateHandler (ChannelStateSigningRequest publicKey state) = do
+      wallet <- case Map.lookup publicKey walletMap of
+        Nothing -> throwError walletNotFoundError
+        Just w -> return w
+      return $ signChannelState state wallet
+
+    verifyChannelState :: ChannelStateVerificationRequest -> Handler Bool
+    verifyChannelState (ChannelStateVerificationRequest signature publicKey state) = return $ verifyChannelStateSignature signature publicKey state
 
 main :: IO ()
 main = do
