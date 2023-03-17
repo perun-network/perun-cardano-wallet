@@ -65,11 +65,10 @@ package cardano-wallet-launcher
 package cardano-wallet-core-integration
   optimization: False
 
---- Plutus apps revision from head from `next-node` 2022.09.27.
 source-repository-package
   type: git
   location: https://github.com/perun-network/perun-cardano-contract.git
-  tag: a3b16aec7a7ba4cd6a4f96df290f2467f3314e6a
+  tag: 5d46f4da01e25b08654045ddce67d3932a26e172
 
 --- Plutus apps revision from head from `next-node` 2022.09.27.
 source-repository-package

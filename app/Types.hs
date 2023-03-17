@@ -5,7 +5,7 @@ module Types where
 import Data.Aeson (defaultOptions)
 import Data.Aeson.TH (deriveJSON)
 import Ledger.Crypto (PubKey, Signature)
-import Perun (ChannelState)
+import Perun (Channel, ChannelState)
 import Plutus.V2.Ledger.Api (BuiltinByteString)
 
 -- IMPORTANT:
@@ -32,9 +32,12 @@ data ChannelStateVerificationRequest = ChannelStateVerificationRequest
     cvState :: !ChannelState
   }
 
+data CalculateChannelIDReqest = Channel
+
 type KeyAvailabilityRequest = PubKey
 
 $(deriveJSON defaultOptions ''SigningRequest)
 $(deriveJSON defaultOptions ''VerificationRequest)
 $(deriveJSON defaultOptions ''ChannelStateSigningRequest)
 $(deriveJSON defaultOptions ''ChannelStateVerificationRequest)
+$(deriveJSON defaultOptions ''CalculateChannelIDReqest)
